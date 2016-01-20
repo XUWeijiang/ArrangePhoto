@@ -20,7 +20,7 @@ namespace ArrangePhoto
         private static Regex mp4_2 = new Regex(@"^WP_(\d{8})_(\d{2})(\d{2})(\d{2})Z$");
         private static Regex mp4_3 = new Regex(@"^WP_(\d{8})_\d{3}$");
         private static Regex doneCheck = new Regex(@"^\d{8}_\d{6}$");
-
+        private static Regex epochExpression = new Regex(@"\d{13}");
         public static DateTime GetDateTakenFromMediaInfo(string path)
         {
             Process p = new Process
@@ -133,7 +133,16 @@ namespace ArrangePhoto
             // If the value string is empty, return DateTime.MinValue, otherwise return the "Media Created" date
             return value == string.Empty ? DateTime.MinValue : DateTime.Parse(value);
         }
-
+        public static DateTime GetDateTakenFromEpoch(string path)
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            Match m = epochExpression.Match(name);
+            if (!m.Success) return DateTime.MinValue;
+            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            epoch = epoch.AddMilliseconds(Convert.ToDouble(m.Value));
+            epoch = epoch.AddHours(8);
+            return epoch;
+        }
         private static string GenerateFileName(DateTime dt, string file)
         {
             if (dt == DateTime.MinValue)
@@ -175,13 +184,22 @@ namespace ArrangePhoto
                 {
                     dt = GetDateTakenFromAvi(file);
                 }
-                else if (Path.GetExtension(file).Equals(".jpg", StringComparison.OrdinalIgnoreCase))
+                else if (Path.GetExtension(file).Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                    || Path.GetExtension(file).Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
                 {
                     dt = GetDateTakenFromImage(file);
                 }
                 else if (Path.GetExtension(file).Equals(".mp4", StringComparison.OrdinalIgnoreCase))
                 {
                     dt = GetDateTakenFromMp4(file);
+                }
+                else if (Path.GetExtension(file).Equals(".mov", StringComparison.OrdinalIgnoreCase))
+                {
+                    dt = GetDateTakenFromMediaInfo(file);
+                }
+                if (dt == DateTime.MinValue)
+                {
+                    dt = GetDateTakenFromEpoch(file);
                 }
                 if (dt == DateTime.MinValue)
                 {
